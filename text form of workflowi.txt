@@ -1,0 +1,216 @@
+- user opens ui
+- user adds total money in
+- user adds total money out
+- user get asked if they want to categorise money out for better results
+- user says yes/no
+- if user says yes, retrieve the categories from the database else skip to the next step
+- user add all necessary categories.
+- user gets asked if they want to filter out any categories
+- if user says yes, display a multi select diagram for which they can select any categories else skip to the next step
+- user selects generate budget overview
+- UI shows budget analysis with UI display
+- UI also shows a button to ask if user want an improved budget based on analysis
+- If yes
+         - application stores budget analysis 
+	- UI asks user if they want to give weights to specific category.
+		- if user says yes, application displays an expanding list for which they can set the weight for each category
+       		 - if not, application uses the default weights from the database 
+	- Using the weights, applications uses the total money in to calculate the new budget
+	- UI shows the next budget by category, also showing the difference between current and new budget
+	- UI also asks if the user want an inflation adjusted budget.
+	- if user says yes,
+ 		- application temporarily stores budget analysis and new budget
+       	 	- application retrieve weights of each category and the current cpi index and cpi predictions for the next 3 quarters using an api call to national office of statistics
+        	- application then adjusts the new budget categories based on the change of the cpi index 
+- UI display new budgets and asks user if they want to save information from the session
+    - if user says yes, the application converts the analysis, new budget (if generated) and inflated adjusted budget (if generated) into a file.
+         
+
+ =========================================================================================================================================================================================
+
+SEQUENCE
+@startuml
+
+actor User
+participant UI
+participant Application
+participant API 
+
+User -> UI : Open UI
+User -> UI : Add total money in
+User -> UI : Add total money out
+UI -> User : Ask if they want to categorise money out
+User --> UI : Yes/No
+
+alt User says Yes
+    UI -> API : Retrieve categories
+    User -> UI : Add necessary categories
+end
+
+UI -> User : Ask if they want to filter categories
+User --> UI : Yes/No
+
+alt User says Yes
+    UI -> UI : Display multi-select for filtering categories
+end
+
+User -> UI : Select Generate Budget Overview
+UI -> Application : Generate Budget Analysis
+Application -> UI : Display budget analysis
+
+UI -> User : Ask if they want an improved budget
+User --> UI : Yes/No
+
+alt User says Yes
+    Application -> Application : Store budget analysis
+    UI -> User : Ask if they want to give weights to categories
+    User --> UI : Yes/No
+    
+    alt User says Yes
+        UI -> UI : Display expanding list for category weights
+        User -> UI : Set weights
+    else
+        Application -> API : Use default weights
+    end
+    
+    Application -> Application : Calculate new budget using weights and total money in
+    UI -> Application : Display new budget by category with differences
+    
+    UI -> User : Ask if they want an inflation-adjusted budget
+    User --> UI : Yes/No
+    
+    alt User says Yes
+        Application -> Application : Temporarily store budget analysis & new budget
+        Application -> API : Retrieve CPI index & predictions
+        Application -> Application : Adjust new budget based on CPI changes
+    end
+end
+
+UI -> User : Display new budget(s), ask if they want to save session data
+User --> UI : Yes/No
+
+alt User says Yes
+    Application -> UI : Convert analysis, new budget, inflation-adjusted budget (if any) into a file
+end
+
+@enduml
+
+
+=========================================================================================================================================================================
+ACTIVITY
+@startuml
+
+start
+
+:User opens UI;
+:User adds total money in;
+:User adds total money out;
+
+:Ask user if they want to categorize money out;
+if (User says Yes?) then
+    :Retrieve categories from database;
+    :User adds necessary categories;
+endif
+
+:Ask user if they want to filter out categories;
+if (User says Yes?) then
+    :Display multi-select for filtering categories;
+endif
+
+:User selects Generate Budget Overview;
+:Generate and display budget analysis;
+
+:Ask user if they want an improved budget;
+if (User says Yes?) then
+    :Store budget analysis;
+    :Ask if user wants to set category weights;
+    if (User says Yes?) then
+        :Display expanding list for category weights;
+        :User sets weights;
+    else
+        :Use default weights from database;
+    endif
+    
+    :Calculate new budget using weights and total money in;
+    :Display new budget by category with differences;
+    
+    :Ask user if they want an inflation-adjusted budget;
+    if (User says Yes?) then
+        :Temporarily store budget analysis and new budget;
+        :Retrieve CPI index & predictions from API;
+        :Adjust new budget based on CPI changes;
+    endif
+endif
+
+:Display final budget(s) and ask user if they want to save session data;
+if (User says Yes?) then
+    :Convert analysis, new budget, and inflation-adjusted budget (if any) into a file;
+endif
+
+stop
+
+@enduml
+
+===============================================================================================================================
+CLASS DIAGRAM
+@startuml
+
+package "Application Server (C++)" {
+    class BudgetCalculator {
+        +double totalMoneyIn
+        +double totalMoneyOut
+        +map<string, double> categories
+        +map<string, double> weights
+        +calculateBudget()
+    }
+    
+    class InflationAdjuster {
+        +applyInflationAdjustment()
+    }
+    
+    class DataStorage {
+        +storeAnalysis()
+        +loadCategories()
+        +saveSessionData()
+    }
+    
+    class APIHandler {
+        +fetchCPIIndex()
+        +fetchPredictions()
+    }
+    
+    BudgetCalculator --> DataStorage : uses
+    BudgetCalculator --> APIHandler : calls
+    InflationAdjuster --> APIHandler : calls
+    InflationAdjuster --> BudgetCalculator : modifies
+}
+
+package "User Interface (Python)" {
+    class UI {
+        +getUserInput()
+        +showCategorySelection()
+        +showWeightSelection()
+    }
+    
+    class AnalysisDisplay {
+        +displayBudgetAnalysis()
+        +displayComparison()
+    }
+    
+    class ReportGenerator {
+        +generateReport()
+        +exportReport()
+    }
+    
+    class APIClient {
+        +sendBudgetData()
+        +requestImprovedBudget()
+    }
+    
+    UI --> APIClient : interacts
+    AnalysisDisplay --> APIClient : fetches data
+    ReportGenerator --> AnalysisDisplay : uses
+    APIClient --> "Application Server" : sends data
+}
+
+@enduml
